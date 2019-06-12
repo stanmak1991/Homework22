@@ -2,6 +2,7 @@ package dao.impl;
 
 import dao.GenericDao;
 
+import javax.persistence.Table;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.sql.Connection;
@@ -24,36 +25,12 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     @Override
     public T save(T t) {
-        Field[] fields = t.getClass().getDeclaredFields();
-        StringBuilder query = new StringBuilder("INSERT INTO " + t.getClass().getSimpleName() + "(");
-        StringBuilder valuesQuery = new StringBuilder("VALUES(");
+        String query = createQuery("save", t);
+        PreparedStatement preparedStatement = null;
         try {
-            for (Field f : fields) {
-                f.setAccessible(true);
-                Object value = f.get(t);
-                if (value == null) {
-                    continue;
-                } else {
-                    if (query.charAt(query.length() - 1) != '(') {
-                        query.append(", ");
-                        valuesQuery.append(", ");
-                    }
-                    query.append(f.getName());
-                    if (value.getClass().equals(String.class)) {
-                        valuesQuery.append('\'');
-                        valuesQuery.append(value);
-                        valuesQuery.append('\'');
-                    } else {
-                        valuesQuery.append(value);
-                    }
-                }
-            }
-            query.append(") ");
-            valuesQuery.append(");");
-            query.append(valuesQuery);
-            PreparedStatement preparedStatement = connection.prepareStatement(query.toString());
+            preparedStatement = connection.prepareStatement(query);
             preparedStatement.executeUpdate();
-        } catch (SQLException | IllegalAccessException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return t;
@@ -62,7 +39,7 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
     @Override
     public T get(ID id) {
         T entity = null;
-        String query = "SELECT * FROM " + persistentClass.getSimpleName() + " WHERE ID=" + id;
+        String query = createQuery("get", id);
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -82,32 +59,11 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     @Override
     public T update(T t) {
-        StringBuilder query = new StringBuilder("UPDATE " + t.getClass().getSimpleName() + " SET ");
-        Field[] fields = persistentClass.getDeclaredFields();
+        String query = createQuery("update", t);
         try {
-            for (int counter = 1; counter < fields.length; counter++) {
-                fields[counter].setAccessible(true);
-                query.append(fields[counter].getName());
-                query.append("=");
-                if (fields[counter].getType().equals(String.class)) {
-                    query.append('\'');
-                    query.append(fields[counter].get(t));
-                    query.append('\'');
-                } else {
-                    query.append(fields[counter].get(t));
-                }
-                if (counter < fields.length - 1) {
-                    query.append(", ");
-                } else {
-                    query.append(" ");
-                }
-            }
-            query.append(" WHERE ID=");
-            fields[0].setAccessible(true);
-            query.append(fields[0].get(t));
             PreparedStatement preparedStatement = connection.prepareStatement(query.toString());
             preparedStatement.executeUpdate();
-        } catch (SQLException | IllegalAccessException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return t;
@@ -115,7 +71,7 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     @Override
     public void delete(ID id) {
-        String query = "DELETE FROM " + persistentClass.getSimpleName() + " WHERE ID=" + id;
+        String query = createQuery("delete", id);
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
             preparedStatement.execute();
@@ -126,8 +82,9 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     @Override
     public List<T> getAll() {
+        String table = persistentClass.getAnnotation(Table.class).name();
         List<T> allEntities = new ArrayList<>();
-        String query = "SELECT * FROM " + persistentClass.getSimpleName();
+        String query = "SELECT * FROM " + table;
         Field[] fields = persistentClass.getDeclaredFields();
 
         try {
@@ -145,5 +102,91 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
             e.printStackTrace();
         }
         return allEntities;
+    }
+
+    private String createQuery(String action, Object object) {
+        String table = persistentClass.getAnnotation(Table.class).name();
+        Field[] fields;
+        String query;
+        StringBuilder temp;
+        switch (action) {
+            case "save":
+                temp = new StringBuilder("INSERT INTO " + table + "(");
+                StringBuilder valuesQuery = new StringBuilder("VALUES(");
+                fields = object.getClass().getDeclaredFields();
+                for (Field f : fields) {
+                    f.setAccessible(true);
+                    Object value = null;
+                    try {
+                        value = f.get(object);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                    if (value == null) {
+                        continue;
+                    } else {
+                        if (temp.charAt(temp.length() - 1) != '(') {
+                            temp.append(", ");
+                            valuesQuery.append(", ");
+                        }
+                        temp.append(f.getName());
+                        if (value.getClass().equals(String.class)) {
+                            valuesQuery.append('\'');
+                            valuesQuery.append(value);
+                            valuesQuery.append('\'');
+                        } else {
+                            valuesQuery.append(value);
+                        }
+                    }
+                }
+                temp.append(") ");
+                valuesQuery.append(");");
+                temp.append(valuesQuery);
+                query = temp.toString();
+                break;
+            case "get":
+                query = "SELECT * FROM " + table + " WHERE ID=" + object;
+                break;
+            case "update":
+                fields = persistentClass.getDeclaredFields();
+                temp = new StringBuilder("UPDATE " + table + " SET ");
+                for (int counter = 1; counter < fields.length; counter++) {
+                    fields[counter].setAccessible(true);
+                    temp.append(fields[counter].getName());
+                    temp.append("=");
+                    try {
+                        if (fields[counter].getType().equals(String.class)) {
+                            temp.append('\'');
+                            temp.append(fields[counter].get(object));
+                            temp.append('\'');
+                        } else {
+                            temp.append(fields[counter].get(object));
+                        }
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                    if (counter < fields.length - 1) {
+                        temp.append(", ");
+                    } else {
+                        temp.append(" ");
+                    }
+                }
+                temp.append(" WHERE ID=");
+                fields[0].setAccessible(true);
+                try {
+                    temp.append(fields[0].get(object));
+                } catch (IllegalAccessException ex) {
+                    ex.printStackTrace();
+                }
+                query = temp.toString();
+                break;
+            case "delete":
+                query = "DELETE FROM " + table + " WHERE ID=" + object;
+                break;
+            default:
+                query = null;
+
+        }
+        return query;
     }
 }

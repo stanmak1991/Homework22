@@ -1,7 +1,11 @@
 package model;
 
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import java.util.Objects;
 
+@Entity
+@Table(name = "GOOD")
 public class Good {
     private Long id;
     private String name;

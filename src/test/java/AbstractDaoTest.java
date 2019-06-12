@@ -23,21 +23,23 @@ public class AbstractDaoTest {
 
     @Test
     public void saveTest() {
-        User user = new User("test", "test@test.com");
+        User user = new User("test1", "test1@test.com");
         daoUser.save(user);
-        Good good = new Good("test", "description", 5.00);
+        Good good = new Good("test1", "description", 10.00);
         daoGood.save(good);
     }
 
     @Test
     public void getTest() {
-        User user = daoUser.get(2L);
+        User user = daoUser.get(12L);
+        System.out.println(user);
         Good good = daoGood.get(1L);
+        System.out.println(good);
     }
 
     @Test
     public void UpdateTest() {
-        User user = daoUser.get(6L);
+        User user = daoUser.get(12L);
         System.out.println(user);
         user.setName("t");
         user = daoUser.update(user);
@@ -52,8 +54,8 @@ public class AbstractDaoTest {
 
     @Test
     public void deleteTest() {
-        daoUser.delete(1L);
-        daoGood.delete(5L);
+        daoUser.delete(12L);
+        daoGood.delete(12L);
     }
 
     @Test

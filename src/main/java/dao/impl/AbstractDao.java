@@ -16,16 +16,18 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     protected final Connection connection;
     private final Class<T> persistentClass;
+    private final QueryEditor queryEditor;
 
     protected AbstractDao(Connection connection) {
         this.connection = connection;
         this.persistentClass = (Class<T>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0];
+        this.queryEditor = new QueryEditor(persistentClass);
     }
 
     @Override
     public T save(T t) {
-        String query = createQuery("save", t);
+        String query = queryEditor.createQuery("save", t);
         PreparedStatement preparedStatement = null;
         try {
             preparedStatement = connection.prepareStatement(query);
@@ -39,7 +41,7 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
     @Override
     public T get(ID id) {
         T entity = null;
-        String query = createQuery("get", id);
+        String query = queryEditor.createQuery("get", id);
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -59,7 +61,7 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     @Override
     public T update(T t) {
-        String query = createQuery("update", t);
+        String query = queryEditor.createQuery("update", t);
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query.toString());
             preparedStatement.executeUpdate();
@@ -71,7 +73,7 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
 
     @Override
     public void delete(ID id) {
-        String query = createQuery("delete", id);
+        String query = queryEditor.createQuery("delete", id);
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
             preparedStatement.execute();
@@ -102,91 +104,5 @@ public abstract class AbstractDao<T, ID> implements GenericDao<T, ID> {
             e.printStackTrace();
         }
         return allEntities;
-    }
-
-    private String createQuery(String action, Object object) {
-        String table = persistentClass.getAnnotation(Table.class).name();
-        Field[] fields;
-        String query;
-        StringBuilder temp;
-        switch (action) {
-            case "save":
-                temp = new StringBuilder("INSERT INTO " + table + "(");
-                StringBuilder valuesQuery = new StringBuilder("VALUES(");
-                fields = object.getClass().getDeclaredFields();
-                for (Field f : fields) {
-                    f.setAccessible(true);
-                    Object value = null;
-                    try {
-                        value = f.get(object);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                    if (value == null) {
-                        continue;
-                    } else {
-                        if (temp.charAt(temp.length() - 1) != '(') {
-                            temp.append(", ");
-                            valuesQuery.append(", ");
-                        }
-                        temp.append(f.getName());
-                        if (value.getClass().equals(String.class)) {
-                            valuesQuery.append('\'');
-                            valuesQuery.append(value);
-                            valuesQuery.append('\'');
-                        } else {
-                            valuesQuery.append(value);
-                        }
-                    }
-                }
-                temp.append(") ");
-                valuesQuery.append(");");
-                temp.append(valuesQuery);
-                query = temp.toString();
-                break;
-            case "get":
-                query = "SELECT * FROM " + table + " WHERE ID=" + object;
-                break;
-            case "update":
-                fields = persistentClass.getDeclaredFields();
-                temp = new StringBuilder("UPDATE " + table + " SET ");
-                for (int counter = 1; counter < fields.length; counter++) {
-                    fields[counter].setAccessible(true);
-                    temp.append(fields[counter].getName());
-                    temp.append("=");
-                    try {
-                        if (fields[counter].getType().equals(String.class)) {
-                            temp.append('\'');
-                            temp.append(fields[counter].get(object));
-                            temp.append('\'');
-                        } else {
-                            temp.append(fields[counter].get(object));
-                        }
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                    if (counter < fields.length - 1) {
-                        temp.append(", ");
-                    } else {
-                        temp.append(" ");
-                    }
-                }
-                temp.append(" WHERE ID=");
-                fields[0].setAccessible(true);
-                try {
-                    temp.append(fields[0].get(object));
-                } catch (IllegalAccessException ex) {
-                    ex.printStackTrace();
-                }
-                query = temp.toString();
-                break;
-            case "delete":
-                query = "DELETE FROM " + table + " WHERE ID=" + object;
-                break;
-            default:
-                query = null;
-
-        }
-        return query;
     }
 }

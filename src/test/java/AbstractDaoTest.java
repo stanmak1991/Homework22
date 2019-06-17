@@ -39,12 +39,12 @@ public class AbstractDaoTest {
 
     @Test
     public void UpdateTest() {
-        User user = daoUser.get(12L);
+        User user = daoUser.get(1L);
         System.out.println(user);
         user.setName("t");
         user = daoUser.update(user);
         System.out.println(user);
-        Good good = daoGood.get(6L);
+        Good good = daoGood.get(1L);
         System.out.println(good);
         good.setName("t");
         daoGood.update(good);
@@ -54,8 +54,8 @@ public class AbstractDaoTest {
 
     @Test
     public void deleteTest() {
-        daoUser.delete(12L);
-        daoGood.delete(12L);
+        daoUser.delete(2L);
+        daoGood.delete(2L);
     }
 
     @Test

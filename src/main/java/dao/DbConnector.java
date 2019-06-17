@@ -7,7 +7,7 @@ import java.sql.DriverManager;
 
 public class DbConnector {
     private static final Logger LOGGER = Logger.getLogger(DbConnector.class);
-    private static String dbPath = "jdbc:h2:tcp://localhost/~/madb";
+    private static String dbPath = "jdbc:h2:tcp://localhost/~/test";
     private static String name = "sa";
     private static String password = "";
 

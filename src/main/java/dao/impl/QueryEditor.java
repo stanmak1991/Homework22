@@ -11,17 +11,18 @@ public class QueryEditor<T> {
     }
 
     public String createQuery(String action, Object object) {
+        String query = null;
         switch (action) {
             case "save":
-                return saveQuery(object);
+                query = saveQuery(object);
             case "get":
-                return getQuery(object);
+                query = getQuery(object);
             case "update":
-                return updateQuery(object);
+                query = updateQuery(object);
             case "delete":
-                return deleteQuery(object);
+                query = deleteQuery(object);
         }
-        return null;
+        return query;
     }
 
     private String saveQuery(Object object) {
